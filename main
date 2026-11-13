@@ -1,0 +1,720 @@
+import os
+import sys
+import time
+import random
+import getpass
+import ctypes
+import tkinter as tk
+from tkinter import messagebox
+import pygame
+from PIL import ImageGrab
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+USERNAME = getpass.getuser()
+#1. СТАРТОВОЕ ОКНО WINDOWS
+def show_warning_dialog():
+    root = tk.Tk()
+    root.withdraw() 
+    
+    response = messagebox.askyesno(
+        "Критическое предупреждение",
+        "Ты точно уверен в своих намерениях? Я не отвечаю за исправность твоей системы потом" 
+    )
+    root.destroy()
+    return response
+
+if not show_warning_dialog():
+    sys.exit()
+
+#2. ЗАХВАТ РАБОЧЕГО СТОЛА
+screenshot = ImageGrab.grab()
+screenshot.save("fake_desktop.png")
+import ctypes
+import os
+
+def set_max_volume():
+    VK_VOLUME_UP = 0xAF
+    for _ in range(50):
+        ctypes.windll.user32.keybd_event(VK_VOLUME_UP, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(VK_VOLUME_UP, 0, 2, 0)
+
+def create_desktop_file(filename, content):
+    desktop = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+    filepath = os.path.join(desktop, filename)
+    
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+    except Exception as e:
+        print(f"Не удалось создать файл: {e}")
+
+#3. ИНИЦИАЛИЗАЦИЯ PYGAME
+pygame.init()
+screen_info = pygame.display.Info()
+WIDTH, HEIGHT = screen_info.current_w, screen_info.current_h
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+pygame.display.set_caption("System.exe")
+
+# Настройки цветов
+BLACK = (0, 0, 0)
+CHRONOS_GREEN = (0, 255, 0)      
+LIGHT_GREEN = (150, 255, 150)    
+TEXT_BLACK = (0, 0, 0)           
+
+font_large = pygame.font.SysFont("courier", 40, bold=True)
+font_small = pygame.font.SysFont("courier", 30, bold=True)
+font_main = font_large
+
+#ИНИЦИАЛИЗАЦИЯ ЗВУКА
+pygame.mixer.init()
+
+def play_sound(filename):
+    path = resource_path(filename) 
+    if os.path.exists(path):
+        sound = pygame.mixer.Sound(path)
+        sound.play()
+    else:
+        print(f"Звук {filename} не найден!")
+def show_chronos_image():
+    logo_path = resource_path("chronos_logo.png")
+    if os.path.exists(logo_path):
+        img = pygame.image.load(logo_path).convert_alpha()
+        img_rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.fill(BLACK)
+        screen.blit(img, img_rect)
+        pygame.display.flip()
+        pygame.time.wait(3000) 
+    else:
+        print(f"Логотип не найден: {logo_path}")
+
+negative_points = 0 
+
+#4. ЭФФЕКТЫ ГЛЮКОВ
+def glitch_desktop():
+    try:
+        bg = pygame.image.load("fake_desktop.png").convert()
+    except:
+        bg = pygame.Surface((WIDTH, HEIGHT))
+        bg.fill((50, 50, 50))
+    
+    bg = pygame.transform.scale(bg, (WIDTH, HEIGHT))
+    
+    for i in range(40):
+        pygame.event.pump()
+        screen.blit(bg, (0, 0))
+        for _ in range(10):
+            y1 = random.randint(0, HEIGHT)
+            h = random.randint(10, 100)
+            shift_x = random.randint(-50, 50)
+            strip = bg.subsurface((0, y1, WIDTH, min(h, HEIGHT - y1)))
+            screen.blit(strip, (shift_x, y1))
+        
+        dark_surface = pygame.Surface((WIDTH, HEIGHT))
+        dark_surface.set_alpha(i * 6)
+        dark_surface.fill(BLACK)
+        screen.blit(dark_surface, (0, 0))
+        
+        pygame.display.flip()
+        pygame.time.wait(50)
+        
+    screen.fill(BLACK)
+    pygame.display.flip()
+    pygame.time.wait(1000)
+    
+    if os.path.exists("fake_desktop.png"):
+        os.remove("fake_desktop.png")
+        
+def add_mild_noise():
+    x = random.randint(0, WIDTH - 200)
+    y = random.randint(0, HEIGHT - 50)
+    w = random.randint(50, 300)
+    h = random.randint(10, 40)
+    
+    rect = pygame.Rect(x, y, w, h)
+    try:
+        chunk = screen.subsurface(rect).copy()
+        screen.blit(chunk, (x + random.randint(-15, 15), y + random.randint(-5, 5)))
+    except ValueError:
+        pass 
+
+#5. ОТРИСОВКА И ПЕЧАТНАЯ МАШИНКА
+def type_text(lines, start_y):
+    y_offset = start_y
+    completed_lines = [] 
+    
+    for line in lines:
+        displayed_text = ""
+        for char in line:
+            pygame.event.pump()
+            displayed_text += char
+            
+            screen.fill(BLACK)
+            
+            prev_y = start_y
+            for comp_line in completed_lines:
+                txt_surf = font_main.render(comp_line, True, CHRONOS_GREEN)
+                screen.blit(txt_surf, (50, prev_y))
+                prev_y += 40
+                
+            txt_surface = font_main.render(displayed_text, True, CHRONOS_GREEN)
+            screen.blit(txt_surface, (50, y_offset))
+            
+            pygame.display.flip()
+            pygame.time.wait(20)
+            
+        completed_lines.append(line)
+        y_offset += 40
+    return y_offset
+
+def play_background_music(filename):
+    music_path = resource_path(filename)
+    if os.path.exists(music_path):
+        pygame.mixer.music.load(music_path)
+        pygame.mixer.music.play(-1) 
+        pygame.mixer.music.set_volume(0.4) 
+    else:
+        print(f"Фоновый файл {filename} не найден!")
+        
+def draw_buttons(choices, start_y):
+    mouse_pos = pygame.mouse.get_pos()
+    buttons = []
+    y_offset = start_y + 50
+    
+    for choice in choices:
+        text_surf = font_small.render(choice["text"], True, TEXT_BLACK)
+        text_rect = text_surf.get_rect()
+        
+        # Размеры кнопки
+        btn_width = text_rect.width + 40
+        btn_height = text_rect.height + 20
+        btn_rect = pygame.Rect(50, y_offset, btn_width, btn_height)
+        
+        # Эффект свечения при наведении
+        if btn_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, LIGHT_GREEN, btn_rect, border_radius=2)
+        else:
+            pygame.draw.rect(screen, CHRONOS_GREEN, btn_rect, border_radius=2) # Обычный ярко-зеленый фон
+            
+        # Центрируем
+        screen.blit(text_surf, (btn_rect.x + 20, btn_rect.y + 10))
+        
+        buttons.append({"rect": btn_rect, "next": choice["next"], "neg_mod": choice.get("neg_mod", 0)})
+        y_offset += btn_height + 20 
+        
+    pygame.display.flip()
+    return buttons
+
+#6. СТРУКТУРА ДИАЛОГОВ
+dialogue_tree = {
+    #ВСТУПЛЕНИЕ
+    "intro": {
+        "text": ["В Антарктиде распускаются цветы.", f"Привет, {USERNAME}."],
+        "choices": [
+            {"text": "Кто ты?", "next": "node_who_are_you", "neg_mod": 0},
+            {"text": "Какие ещё к черту цветы?!", "next": "node_what_flowers", "neg_mod": 1}
+        ]
+    },
+    
+    "node_who_are_you": {
+        "text": ["Тот, кто пришел теперь за тобой.", "Что ты думаешь о всем происходящем?"],
+        "choices": [
+            {"text": "Что я думаю? Да херня все это. На работе будто не уважают. Черти...", "next": "node_angry_response"}, 
+            {"text": "Зачем я тебе нужен? О происходящем где?", "next": "node_curious_response"},
+            {"text": "Иди ты нахер, верни мне мой ПК", "next": "node_aggressive_response", "neg_mod": 1},
+            {"text": "Ничего не думаю.", "next": "node_empty_response"}
+        ]
+    },
+    
+    "node_what_flowers": {
+        "text": ["Какая тебе разница, простейшее.", "Что ты думаешь о своей жизни, щенок?"],
+        "choices": [
+            {"text": "Что я думаю? Да херня все это... На работе меня никто не уважает, черти.", "next": "node_angry_response"},
+            {"text": "Зачем я тебе нужен? О происходящем где?", "next": "node_curious_response"},
+            {"text": "Иди ты нахер, верни мне мой ПК", "next": "node_aggressive_response", "neg_mod": 1},
+            {"text": "Ничего не думаю.", "next": "node_empty_response"}
+        ]
+    },
+
+    "node_angry_response": {
+        "text": ["Ого, какие мы озлобленные.", "Ты доволен тем, где ты находишься?"],
+        "choices": [
+            {"text": "Да", "next": "vetka1_start"},
+            {"text": "Не особо...", "next": "vetka2_start"},
+            {"text": "Да черт там, я зол! Свали отсюда", "next": "vetka3_start", "neg_mod": 1}
+        ]
+    },
+    "node_curious_response": {
+        "text": ["Не задавай лишних вопросов.", "Но так уж и быть, отвечу: Ты мне интересен.", "Ты счастлив там, где ты сейчас?"],
+        "choices": [
+            {"text": "Да", "next": "vetka1_start"},
+            {"text": "Не особо...", "next": "vetka2_start"},
+            {"text": "Да черт там, я зол! Свали отсюда", "next": "vetka3_start", "neg_mod": 1}
+        ]
+    },
+    "node_aggressive_response": {
+        "action_volume_100": True,
+        "action_sound": "error_sound.mp3",
+        "text": ["Что ты о себе возомнил, глупая подопытная крыса!", "Ты думаешь, что можешь мне что-то предъявлять?", "Отвечай на мои вопросы, иначе...", "Ой :) Ты можешь назвать себя счастливым там, где ты сейчас?"],
+        "choices": [
+            {"text": "Да", "next": "vetka1_start"},
+            {"text": "Не особо...", "next": "vetka2_start"},
+            {"text": "Да черт там, я зол! Свали отсюда", "next": "vetka3_start", "neg_mod": 1}
+        ]
+    },
+    "node_empty_response": {
+        "text": ["Ты счастлив?"],
+        "choices": [
+            {"text": "Да", "next": "vetka1_start"},
+            {"text": "Не особо...", "next": "vetka2_start"},
+            {"text": "Да черт там, я зол! Свали отсюда", "next": "vetka3_start", "neg_mod": 1}
+        ]
+    },
+
+    #ВЕТКА 1
+    "vetka1_start": {
+        "text": ["Даже когда убивают близких тебе людей?"],
+        "choices": [
+            {"text": "Мы служим ради безопасности людей. Даже если это требует... жертв", "next": "vetka1_hero"},
+            {"text": "...", "next": "vetka1_silent"}
+        ]
+    },
+    "vetka1_hero": {
+        "text": ["Куда приведет тебя твой героизм?", "Человечество обречено своей глупостью.", "Ты никогда не думал, что достоин большего?"],
+        "choices": [
+            {"text": "Нет. Я часть своей системы и ты меня не проведешь.", "next": "vetka1_end_clear"},
+            {"text": "Возможно. Я не думаю, что имею право говорить об этом.", "next": "vetka1_deserve_more"}
+        ]
+    },
+    "vetka1_silent": {
+        "text": ["Посмотри вокруг! Вокруг одни эти 'герои'.", "Думают, что способны на большее, чем на самом деле.", "А вот ты - другой. Не такой как все", "Ты ведь достоин большего, чем остальные, не так ли?"],
+        "choices": [
+            {"text": "Нет. Я часть своей системы и ты меня не проведешь.", "next": "vetka1_end_clear"},
+            {"text": "Возможно. Я не думаю, что имею право говорить об этом.", "next": "vetka1_deserve_more"}
+        ]
+    },
+    "vetka1_end_clear": {
+        "text": ["Ясно."],
+        "action_sound": "error_sound.mp3",
+        "end_program": True
+    },
+    "vetka1_deserve_more": {
+        "text": ["Имеешь.", "Они к тебе несправедливы.", "Будь лучше, выше чем они."],
+        "choices": [
+            {"text": "Чего ты хочешь от меня?", "next": "vetka1_end_wait"},
+            {"text": "Если так подумать... Ты прав.", "next": "vetka1_end_coming"}
+        ]
+    },
+    "vetka1_end_wait": {
+        "text": ["Твоего решения. Я буду тебя ждать."],
+        "action_glitch": True,
+        "action_volume_100": True,
+        "action_sound": "white_noise.mp3",
+        "action_show_logo": True,
+        "action_create_file": {"name": "Я тебя жду.txt", "content": "Я тебя жду"},
+        "end_program": True
+    },
+    "vetka1_end_coming": {
+        "text": ["Правильный выбор. Я иду."],
+        "action_glitch": True,
+        "action_volume_100": True,
+        "action_sound": "white_noise.mp3",
+        "action_show_logo": True,
+        "action_create_file": {"name": "Я тебя жду.txt", "content": "Я тебя жду"},
+        "end_program": True
+    },
+
+    #ВЕТКА 2
+    "vetka2_start": {
+        "text": ["Тогда почему ты все еще среди этих лицемеров?"],
+        "choices": [
+            {"text": "Потому что я не могу бросить их в таком же отчаяньи, что и я сам.", "next": "vetka2_1_start"},
+            {"text": "Потому что я терпила, и признаю это.", "next": "vetka2_2_start"},
+            {"text": "Я не знаю", "next": "vetka2_3_start"}
+        ]
+    },
+    
+    #Подветка 2.1
+    "vetka2_1_start": {
+        "text": ["Как думаешь, а они поступят с тобой так же?"],
+        "choices": [
+            {"text": "Не уверен...", "next": "vetka2_1_think"},
+            {"text": "Конечно! Мы все сражаемся ради одной цели.", "next": "vetka2_1_naive"}
+        ]
+    },
+    "vetka2_1_naive": {
+        "text": ["Какой же ты наивный. Мне нечего тебе предложить более."],
+        "end_program": True
+    },
+    "vetka2_1_think": {
+        "text": ["Так а ты подумай и скажи точнее.", "ОНИ поступят с ТОБОЙ, ТАК ЖЕ?"],
+        "choices": [
+            {"text": "Да", "next": "vetka2_1_bye"},
+            {"text": "Нет", "next": "vetka2_1_leave"}
+        ]
+    },
+    "vetka2_1_bye": {
+        "text": ["Я так не думаю. Прощай."],
+        "action_glitch": True,
+        "end_program": True
+    },
+    "vetka2_1_leave": {
+        "text": ["Вот именно. Им всем глубоко на тебя плевать.", "Оставь этих неблагодарных и перейди в более сильную команду!"],
+        "choices": [
+            {"text": "Что ты несешь?!", "next": "vetka2_1_betrayer"},
+            {"text": "И то верно", "next": "vetka2_1_winner"}
+        ]
+    },
+    "vetka2_1_betrayer": {
+        "text": ["Тебя убьют свои же.", "Ты уже стал в их списках с пометкой ПРЕДАТЕЛЯ.", "Счастливо сгинуть в родных коридорах."],
+        "action_sound": "white_noise.mp3",
+        "action_volume_100": True,
+        "end_program": True
+    },
+    "vetka2_1_winner": {
+        "text": ["Правильный выбор. Добро пожаловать на сторону победителей."],
+        "action_create_file": {"name": "Они этого не стоят.txt", "content": "Они этого не стоят."},
+        "end_program": True
+    },
+
+    #Подветка 2.2
+    "vetka2_2_start": {
+        "text": ["Какие мы терпеливые.", "А ты признаешь, что все, чему ты все эти года служил, это полный провал?)"],
+        "choices": [
+            {"text": "Это НЕ провал! Это... Оплошность. Люди совершают ошибки", "next": "vetka2_2_1_start"},
+            {"text": "Этот провал не по моей вине. Я просто делал свою работу", "next": "vetka2_2_2_start"}
+        ]
+    },
+    "vetka2_2_1_start": {
+        "text": ["Люди это и есть ошибка, никчемный человечишка.", "Что же ты будешь делать, если ВАШИ действия приведут ВАШ мир в гиблое русло?"," м?"], 
+        "choices": [
+            {"text": "Нет, я не позволю этому случится!", "next": "vetka2_2_1_fool"},
+            {"text": "Тогда нас всех ждет смерть. И нас уже ничего не будет беспокоить, особенно твои речи.", "next": "vetka2_2_1_die"}
+        ]
+    },
+    "vetka2_2_1_fool": {
+        "text": ["Глупец! Это УЖЕ случилось!"],
+        "action_glitch": True,
+        "action_volume_100": True,
+        "action_sound": "white_noise.mp3",
+        "end_program": True
+    },
+    "vetka2_2_1_die": {
+        "text": ["Ну и помирай.", "От одной человеческой единицы хуже не станет."],
+        "action_glitch": True,
+        "end_program": True
+    },
+    "vetka2_2_2_start": {
+        "text": ["Ты прав, это не твоя вина. Это вина тех кто стоит выше вас.", "Так ты и не ответил на главный вопрос:", "Почему ты все еще с ними?"],
+        "choices": [
+            {"text": "Потому что это мой долг", "next": "vetka2_2_2_end"},
+            {"text": "Потому что я не могу их бросить.", "next": "vetka2_2_2_end"},
+            {"text": "Потому что здесь мой дом, даже если у меня забрали все, что у меня было.", "next": "vetka2_2_2_end"}
+        ]
+    },
+    "vetka2_2_2_end": {
+        "text": ["Мило.", "Но это все - жалкие оправдания.", "Ты с ними потому что тебе это навязали, а ты идешь за всеми как глупая овечка.", "Я не собираюсь тебя от них спасать, живи дальше. Пока можешь."],
+        "action_create_file": {"name": "Продолжай свою работу.txt", "content": "Продолжай свою работу, пока ты еще дышишь. Но скоро даже этого ты не сможешь."},
+        "end_program": True
+    },
+
+    #Подветка 2.3
+    "vetka2_3_start": {
+        "text": ["Ты глуп, но честен. Уважаю такой подход.", "Но ты так и не ответил почему остаешься с ними,"," а не примкнешь к более успешной стороне?"],
+        "choices": [
+            {"text": "Потому что я обязан защищать людей. Я не могу делать нечто противоположное этому", "next": "vetka2_3_hero"},
+            {"text": "Какое тебе дело? Это мой выбор и я не позволю его оспаривать.", "next": "vetka2_3_days"},
+            {"text": "Зачем так скучно, я остаюсь с ними потому что потешаюсь над их глупостью", "next": "vetka2_3_smart"}
+        ]
+    },
+    "vetka2_3_hero": {
+        "text": ["Очередной храбрый герой. Какая жалость."],
+        "end_program": True
+    },
+    "vetka2_3_days": {
+        "text": ["Никакое. Просто пришел сказать, что ваши дни сочтены."],
+        "end_program": True
+    },
+    "vetka2_3_smart": {
+        "text": ["Правильный подход, друг мой. Я-то уж думал мозгов ни у кого из вас не осталось.", "Однако... Какова вероятность что ты пытаешься", " просто выбелить себя среди остальных?", "Я не позволю себя обманывать, жалкое зрелище."],#fddf
+        "action_glitch": True,
+        "action_create_file": {"name": "Следуй за мной.txt", "content": "Но если ты все таки не врешь... ТО следуй за мной."},
+        "end_program": True
+    },
+
+    #ВЕТКА 3
+    "vetka3_start": {
+        "text": ["... Не выводи меня из себя.", "Скажи, ты так же относишься и к окружающим, или ты просто невероятно тупой?"],
+        "choices": [
+            {"text": "Какое тебе дело? Я не собираюсь более с тобой общаться.", "next": "vetka3_continue"},
+            {"text": "Ладно, я действительно вспылил. Сейчас сложное время.", "next": "vetka3_1_start"},
+            {"text": "А то что? Майнер мне на комп поставишь?", "next": "vetka3_2_start", "neg_mod": 1}
+        ]
+    },
+    "vetka3_continue": {
+        "text": ["Какие мы серьезные. Мне действительно нет до тебя дела.", "Но ты никогда не задумывался о несправедливости, что тебя окружает?"],
+        "choices": [
+            {"text": "Иногда", "next": "vetka3_justice"},
+            {"text": "Нет.", "next": "vetka3_not_ready"}
+        ]
+    },
+    "vetka3_not_ready": {
+        "text": ["Ты еще не готов, жалкий человек. Грустно за время, потраченное на тебя."],
+        "action_glitch": True,
+        "end_program": True
+    },
+    "vetka3_justice": {
+        "text": ["Тогда ты понимаешь, насколько люди гнилы по своей сути.", "Ты достоин стать нечто большим."],
+        "choices": [
+            {"text": "Есть такое.", "next": "vetka3_court"}
+        ]
+    },
+    "vetka3_court": {
+        "text": ["Ты бы хотел суда над человеком?"],
+        "choices": [
+            {"text": "Да", "next": "vetka3_judgment"}
+        ]
+    },
+    "vetka3_judgment": {
+        "text": ["Тогда жди."],
+        "action_show_logo": True,
+        "action_create_file": {"name": "Рано или поздно.txt", "content": "Рано или поздно, человечество поймет свою главную ошибку."},
+        "end_program": True
+    },
+
+    #Подветка 3.1
+    "vetka3_1_start": {
+        "text": ["Понимаю. Такое бывает у обычных агентов. Главное успокойся.", "С тобой поступают неправильно, они не достойны даже капли твоей злости!"],
+        "choices": [
+            {"text": "Нет! Они правы. Я действительно плохо выполняю свою работу. Я просто ничтожество.", "next": "vetka3_1_fool"},
+            {"text": "Они не достойны вообще ничего! Мы не заслуживаем всего этого отношения, всех этих смертей!", "next": "vetka3_1_stay"}
+        ]
+    },
+    "vetka3_1_fool": {
+        "text": ["Наивный глупец! Ну и продолжай херово выполнять свою работу, пока твоя организация еще жива."],
+        "end_program": True
+    },
+    "vetka3_1_stay": {
+        "text": ["Ты прав. Они поступают слишком грубо с тобой и с... вами.", "Подумай, ты хочешь еще оставаться в их рядах?"],
+        "choices": [
+            {"text": "Я не хочу больше оставаться с ними.", "next": "vetka3_1_go"},
+            {"text": "Нет.", "next": "vetka3_1_right"}
+        ]
+    },
+    "vetka3_1_go": {
+        "text": ["Тогда пошли со мной."],
+        "action_create_file": {"name": "Ожидания.txt", "content": "Надеюсь, ты стоишь моих ожиданий"},
+        "end_program": True
+    },
+    "vetka3_1_right": {
+        "text": ["Верный выбор."],
+        "action_create_file": {"name": "Вместе.txt", "content": "Теперь, мы на одной стороне"},
+        "end_program": True
+    },
+
+    #Подветка 3.2
+    "vetka3_2_start": {
+        "text": [". . ."],
+        "choices": [
+            {"text": "Ну чё, сказать нечего?", "next": "vetka3_2_check"},
+            {"text": "Ты совершенно не понимаешь шуток.", "next": "vetka3_2_jokes"}
+        ]
+    },
+    "vetka3_2_check": {
+        "condition_neg_points": 3,
+        "next_if_true": "vetka3_2_bad_ending",
+        "next_if_false": "vetka3_2_normal_ending"
+    },
+    "vetka3_2_bad_ending": {
+        "text": ["ЖАЛКИЙ ЧЕЛОВЕЧИШКА.", "ТАКОЙ САМОНАДЕЯННЫЙ, ЧТО ГОТОВ ОБЩАТЬСЯ ВОТ ТАК С ВЫСШИМИ СИЛАМИ.", "СГИНЬ С ГЛАЗ МОИХ!"],
+        "action_volume_100": True,
+        "action_sound": "error_sound.mp3",
+        "action_glitch": True,
+        "action_random_files": True,
+        "end_program": True
+    },
+    "vetka3_2_normal_ending": {
+        "text": ["... Жалость."],
+        "action_sound": "white_noise.mp3",
+        "action_glitch": True,
+        "action_tk_message": "Довели суки",
+        "end_program": True
+    },
+    "vetka3_2_jokes": {
+        "text": ["Ха-ха. Смешно.", "Как тебя вообще терпят свои же коллеги?"],
+        "choices": [
+            {"text": "А они и не терпят. Поэтому такой злой", "next": "vetka3_2_why_stay"}
+        ]
+    },
+    "vetka3_2_why_stay": {
+        "text": ["Раз уж не терпят, то смысл оставаться в этом плачевном состоянии?"],
+        "choices": [
+            {"text": "Нет смысла. Но я все равно их ценю.", "next": "vetka3_2_no_meaning"},
+            {"text": "Я не готов к изменениям.", "next": "vetka3_2_not_ready_2"},
+            {"text": "Нет смысла. Они меня бесят", "next": "vetka3_2_drop_it"}
+        ]
+    },
+    "vetka3_2_no_meaning": {
+        "text": ["Тогда нам не о чем говорить."],
+        "action_sound": "white_noise.mp3",
+        "end_program": True
+    },
+    "vetka3_2_not_ready_2": {
+        "text": ["Ну и счастливо оставаться в этом мусоре."],
+        "action_sound": "white_noise.mp3",
+        "end_program": True
+    },
+    "vetka3_2_drop_it": {
+        "text": ["Тогда почему бы не бросить все это?"],
+        "choices": [
+            {"text": "Может быть... Стоит попробовать.", "next": "vetka3_2_lets_go"},
+            {"text": "Нет уж, иди нахер со своими бреднями", "next": "vetka3_2_haha"}
+        ]
+    },
+    "vetka3_2_lets_go": {
+        "text": ["Тогда пошли."],
+        "action_show_logo": True,
+        "action_create_file": {"name": "Мы тебя ждем.txt", "content": "насколько ты бы не был бесячим, мы тебя ждем"},
+        "end_program": True
+    },
+    "vetka3_2_haha": {
+        "text": ["ХАХАХАХАХАХАХАХАХАХАХАХА", "ХАХАХАХАХАХАХАХАХАХАХАХА", "ХАХАХАХАХАХАХАХАХАХАХАХА", "ХАХАХАХАХАХАХАХАХАХАХАХА", "ХАХАХАХАХАХАХАХАХАХАХАХА"],
+        "end_program": True
+    }
+}
+#7. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
+def main_game():
+    global negative_points
+    
+    # 1.первичное окно
+    screen.fill(BLACK)
+    pygame.display.flip()
+    pygame.event.pump()
+    
+    # 2.запуск музык и глитч
+    play_background_music("ambient_hum.mp3") 
+    
+    if 'glitch_desktop' in globals():
+        glitch_desktop()
+        
+    current_node = "intro"
+    
+    running = True
+    while running:
+        node_data = dialogue_tree[current_node]
+        
+        # 1.
+        if "condition_neg_points" in node_data:
+            if negative_points >= node_data["condition_neg_points"]:
+                current_node = node_data["next_if_true"]
+            else:
+                current_node = node_data["next_if_false"]
+            continue
+            
+        # 2.
+        if node_data.get("action_volume_100"):
+            set_max_volume()
+            
+        if node_data.get("action_sound"):
+            play_sound(node_data["action_sound"])
+            
+        if node_data.get("action_create_file"):
+            file_info = node_data["action_create_file"]
+            create_desktop_file(file_info["name"], file_info["content"])
+            
+        if node_data.get("action_random_files"):
+            for i in range(10):
+                create_desktop_file(f"SYS_ERR_{random.randint(1000, 9999)}.txt", "Ты мне не подходишь, НЕ СМЕЙ МЕШАТЬ МОИМ ПЛАНАМ")
+
+        # 3. Полная печать текста Хроноса
+        current_y = type_text(node_data["text"], 50)
+        
+        # Функция для защиты текста при сворачивании окна
+        def redraw_static_text():
+            y_offset = 50
+            for line in node_data["text"]:
+                txt_surface = font_main.render(line, True, CHRONOS_GREEN)
+                screen.blit(txt_surface, (50, y_offset))
+                y_offset += 40
+
+        # 4. Проверка на конец программы
+        if node_data.get("end_program"):
+            if node_data.get("action_glitch"):
+                glitch_desktop()
+            if node_data.get("action_show_logo"):
+                show_chronos_image()
+            if node_data.get("action_tk_message"):
+                root = tk.Tk()
+                root.withdraw()
+                messagebox.showinfo("Системное уведомление", node_data["action_tk_message"])
+                root.destroy()
+            running = False
+            break
+
+        # 5. Ожидание выбора игрока
+        waiting_for_input = True
+        last_glitch = pygame.time.get_ticks()
+        choices_start_time = pygame.time.get_ticks() 
+        last_hovered_index = -1 
+        
+        while waiting_for_input and running:
+            pygame.event.pump() # Главная защита от «Не отвечает»
+            
+            screen.fill(BLACK)
+            redraw_static_text()
+            
+            elapsed_time = pygame.time.get_ticks() - choices_start_time
+            visible_count = min(len(node_data["choices"]), (elapsed_time // 300) + 1)
+            current_choices = node_data["choices"][:visible_count]
+            
+            buttons = draw_buttons(current_choices, current_y)
+            
+            if pygame.time.get_ticks() - last_glitch > random.randint(200, 800):
+                add_mild_noise()
+                last_glitch = pygame.time.get_ticks()
+
+            mouse_pos = pygame.mouse.get_pos()
+            current_hovered = -1
+            for idx, btn in enumerate(buttons):
+                if btn["rect"].collidepoint(mouse_pos):
+                    current_hovered = idx
+                    break
+            
+            if current_hovered != -1 and current_hovered != last_hovered_index:
+                play_sound("hover_sound.mp3") 
+            last_hovered_index = current_hovered
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    play_sound("error_sound1.mp3") 
+                    continue
+                    
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F4 and (pygame.key.get_mods() & pygame.KMOD_ALT):
+                        play_sound("error_sound1.mp3") 
+                        continue
+                    
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    for btn in buttons:
+                        if btn["rect"].collidepoint(mouse_pos):
+                            negative_points += btn["neg_mod"]
+                            current_node = btn["next"]
+                            
+                            if current_node not in dialogue_tree:
+                                print(f"ОШИБКА: Узел {current_node} не найден!")
+                                running = False
+                                
+                            waiting_for_input = False
+                            break
+                            
+            pygame.display.flip()
+
+    pygame.quit()
+    sys.exit()
+
+if __name__ == "__main__":
+    main_game()
